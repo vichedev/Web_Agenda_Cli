@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ClientForm } from '../components/ClientForm';
 import { ChevronRightIcon, PencilIcon, PlusIcon } from '../components/Icons';
+import { Modal, useConfirm } from '../components/Modal';
 import { MonthNav, MonthTitle } from '../components/MonthNav';
 import { SupportForm } from '../components/SupportForm';
 import { SupportItem } from '../components/SupportItem';
@@ -17,6 +18,7 @@ export function ClientDetailPage() {
   const qc = useQueryClient();
   const [month, setMonth] = useState(monthKey(new Date()));
   const [creating, setCreating] = useState(false);
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
 
   const client = useQuery({ queryKey: ['client', id], queryFn: () => api.client(id) });
@@ -54,7 +56,7 @@ export function ClientDetailPage() {
           <div className="flex w-full flex-wrap gap-2.5 sm:w-auto">
             <button className={btn()} onClick={() => { setCreating(true); setEditing(false); }}><PlusIcon className="size-4" />Nuevo soporte</button>
             <button className={btn('secondary')} onClick={() => { setEditing(!editing); setCreating(false); }}><PencilIcon className="size-4" />{editing ? 'Cerrar edición' : 'Editar'}</button>
-            <button className={btn('danger')} onClick={() => confirm('¿Dar de baja a este cliente? El historial se conserva y puede volver a registrarlo con el mismo número.') && remove.mutate()}>Dar de baja</button>
+            <button className={btn('danger')} onClick={async () => { if (await confirm({ title: 'Dar de baja al cliente', message: <>{c.name} dejará de aparecer en la lista de clientes. Su historial de soportes se conserva y podrá volver a registrarlo con el mismo nombre.</>, confirmText: 'Dar de baja', tone: 'danger' })) remove.mutate(); }}>Dar de baja</button>
           </div>
         </div>
 
@@ -75,7 +77,9 @@ export function ClientDetailPage() {
         )}
       </Card>
 
-      {creating && <div className="mb-6"><SupportForm date={new Date()} clientId={id} onDone={() => setCreating(false)} /></div>}
+      <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo soporte" description={`Cliente: ${c.name}`}>
+        <SupportForm bare date={new Date()} clientId={id} onDone={() => setCreating(false)} />
+      </Modal>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Card title="Historial de soportes" action={<MonthNav month={month} onChange={setMonth} />}>

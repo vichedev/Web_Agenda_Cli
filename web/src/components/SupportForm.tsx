@@ -4,7 +4,7 @@ import { api } from '../lib/api';
 import { toLocalInput } from '../lib/format';
 import { btn, cx, field, input } from '../lib/ui';
 
-export function SupportForm({ date, clientId, onDone }: { date: Date; clientId?: number; onDone: () => void }) {
+export function SupportForm({ date, clientId, onDone, bare = false }: { date: Date; clientId?: number; onDone: () => void; bare?: boolean }) {
   const qc = useQueryClient();
   const clients = useQuery({ queryKey: ['clients', ''], queryFn: () => api.clients() });
   const initial = new Date(date);
@@ -33,8 +33,8 @@ export function SupportForm({ date, clientId, onDone }: { date: Date; clientId?:
   const submit = (e: FormEvent) => { e.preventDefault(); create.mutate(); };
 
   return (
-    <form className="animate-fade flex flex-col rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200" onSubmit={submit}>
-      <h3 className="mb-4 text-sm font-semibold text-slate-900">{completed ? 'Registrar soporte realizado' : 'Nuevo soporte'}</h3>
+    <form className={bare ? 'flex flex-col' : 'animate-fade flex flex-col rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200'} onSubmit={submit}>
+      {!bare && <h3 className="mb-4 text-sm font-semibold text-slate-900">{completed ? 'Registrar soporte realizado' : 'Nuevo soporte'}</h3>}
       <label className={field}>Cliente
         <select className={input} required value={client} onChange={(e) => setClient(Number(e.target.value))} disabled={clientId !== undefined}>
           <option value="" disabled>Seleccione un cliente…</option>

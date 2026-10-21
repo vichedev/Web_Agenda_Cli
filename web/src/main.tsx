@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
 import { CalendarIcon, LogoutIcon, SettingsIcon, UsersIcon } from './components/Icons';
 import { Alerts } from './components/Alerts';
+import { ConfirmProvider } from './components/Modal';
 import { Realtime } from './components/Realtime';
 import { Logo } from './components/ui';
 import { WA_INFO } from './components/WhatsAppPanel';
@@ -80,6 +81,7 @@ function Layout() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <ConfirmProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -92,6 +94,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </ConfirmProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

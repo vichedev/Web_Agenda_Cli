@@ -9,6 +9,7 @@ const variant = {
   primary: 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-500',
   secondary: 'bg-white text-slate-700 shadow-sm ring-1 ring-slate-300 ring-inset hover:bg-slate-50',
   danger: 'bg-white text-rose-600 shadow-sm ring-1 ring-rose-200 ring-inset hover:bg-rose-50',
+  dangerSolid: 'bg-rose-600 text-white shadow-sm hover:bg-rose-500',
   ghost: 'text-slate-600 hover:bg-slate-100',
 };
 

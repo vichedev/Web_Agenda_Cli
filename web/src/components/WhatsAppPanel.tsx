@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type WaStatus } from '../lib/api';
 import { btn, cx } from '../lib/ui';
+import { useConfirm } from './Modal';
 
 export const WA_INFO: Record<WaStatus['state'], { label: string; dot: string; badge: string }> = {
   starting: { label: 'Iniciando', dot: 'bg-slate-400', badge: 'bg-slate-100 text-slate-600 ring-slate-500/20' },
@@ -14,6 +15,7 @@ export function WhatsAppPanel() {
   const qc = useQueryClient();
   // Se consulta cada 2 s: el QR de WhatsApp rota cada ~20 s.
   const { data } = useQuery({ queryKey: ['wa'], queryFn: api.waStatus, refetchInterval: 2000, staleTime: 0 });
+  const confirm = useConfirm();
   const logout = useMutation({ mutationFn: api.waLogout, onSuccess: () => qc.invalidateQueries({ queryKey: ['wa'] }) });
   const info = data ? WA_INFO[data.state] : WA_INFO.starting;
 
@@ -33,7 +35,7 @@ export function WhatsAppPanel() {
         </div>
       )}
       {data?.state === 'connected' && (
-        <button type="button" className={cx(btn('danger', 'sm'), 'mt-4')} onClick={() => confirm('¿Desvincular este WhatsApp?') && logout.mutate()}>
+        <button type="button" className={cx(btn('danger', 'sm'), 'mt-4')} onClick={async () => { if (await confirm({ title: 'Desvincular WhatsApp', message: 'El bot dejará de recibir y enviar mensajes hasta que vuelva a escanear un código QR. Sus soportes y clientes no se tocan.', confirmText: 'Desvincular', tone: 'danger' })) logout.mutate(); }}>
           Desvincular
         </button>
       )}

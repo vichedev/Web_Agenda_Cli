@@ -27,3 +27,5 @@ export const BellIcon = icon(<path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-1
 export const SparkIcon = icon(<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18" />);
 export const PencilIcon = icon(<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17zM14.5 7.5l3 3" />);
 export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />);
+export const WarningIcon = icon(<path d="M12 4 2.8 19a1.2 1.2 0 0 0 1 1.8h16.4a1.2 1.2 0 0 0 1-1.8L12 4ZM12 10v4M12 17.2v.1" />);
+export const CloseIcon = icon(<path d="m6 6 12 12M18 6 6 18" />);

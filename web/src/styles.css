@@ -5,6 +5,10 @@
 
   --animate-fade: fade 0.25s ease backwards;
   --animate-rise: rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  --animate-overlay: overlay 0.18s ease backwards;
+  --animate-flash: flash 1.6s ease-out;
+  @keyframes overlay { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 rgb(99 102 241 / 0.55); } 100% { box-shadow: 0 0 0 14px rgb(99 102 241 / 0); } }
   @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   @keyframes rise { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
 }
@@ -13,6 +17,11 @@
   body { @apply bg-slate-50 font-sans text-sm text-slate-900 antialiased; font-feature-settings: "cv11", "ss01"; }
   button:not(:disabled), summary { cursor: pointer; }
   :focus-visible { outline: 2px solid var(--color-indigo-600); outline-offset: 2px; }
+}
+
+@layer components {
+  /* Barra de desplazamiento fina y discreta para listas internas */
+  .nice-scroll { scrollbar-width: thin; scrollbar-color: var(--color-slate-300) transparent; }
 }
 
 @media (prefers-reduced-motion: reduce) {
