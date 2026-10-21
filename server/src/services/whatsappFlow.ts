@@ -42,6 +42,10 @@ interface Draft {
   description: string | null;
   date: string | null;
   time: string | null;
+  /** El soporte YA se realizo: se registra como completado (se permite fecha pasada). */
+  done: boolean;
+  /** La hora indicada ya paso y se le pregunto si fue un soporte ya realizado. */
+  askPast: boolean;
   tries: number;
 }
 
@@ -50,7 +54,7 @@ const MAX_TRIES = 3;
 const MAX_OPTIONS = 9;
 
 const BYE = 'Cuando quiera, envíeme otro soporte.';
-const HELP = 'Dígame el cliente, el problema, la fecha y la hora y lo guardo. Ej: "Soporte para Juan Pérez mañana a las 10, la impresora no imprime".';
+const HELP = 'Dígame el cliente, el problema, la fecha y la hora y lo guardo. Ej: "Soporte para Juan Pérez mañana a las 10, la impresora no imprime". Si ya lo hizo, dígalo: "Registra un soporte para Juan Pérez, fue hoy a las 3, instalé la impresora".';
 
 /**
  * Herramienta personal. Lista blanca: solo se atiende a los numeros del dueno; el resto se ignora en silencio.
@@ -121,18 +125,19 @@ async function startRequest(from: string, body: string): Promise<Result> {
   }
   return advance(from, {
     body, spoken: intent.clientName, clientName: intent.clientName, clientId: null, options: null, similarCount: 0, hidden: 0, addConfirmed: false,
-    title: intent.title, description: intent.description, date: intent.date, time: intent.time, tries: 0,
+    title: intent.title, description: intent.description, date: intent.date, time: intent.time, done: intent.done, askPast: false, tries: 0,
   });
 }
 
 /** Respuesta a una pregunta pendiente. Devuelve null si el mensaje es una solicitud distinta. */
 async function continueDraft(from: string, d: Draft, body: string): Promise<Result | null> {
   const t = norm(body);
-  if (isNo(t)) return cancel(from);
+  // Un "no" solo (o "no gracias", "cancelar") cancela; "no, es para mañana a las 9" es una correccion.
+  if (isNo(t) && t.split(' ').length <= 2) return cancel(from);
 
   const choosing = !d.clientId && !d.addConfirmed;
   const f = await interpretFollowUp(body, { clientName: d.clientName, asked: missingList(d), options: d.options?.map((o) => o.name) });
-  if (f.answer === 'no') return cancel(from);
+  if (f.answer === 'no' && !f.date && !f.time && !f.clientName) return cancel(from);
 
   let gained = false;
   let prefix = '';
@@ -169,8 +174,14 @@ async function continueDraft(from: string, d: Draft, body: string): Promise<Resu
     d.clientName = f.clientName; gained = true;
   }
 
-  if (f.date && !d.date) { d.date = f.date; gained = true; }
-  if (f.time && !d.time) { d.time = f.time; gained = true; }
+  if (d.askPast) {
+    // Se le pregunto si fue un soporte ya realizado: "si" lo registra completado; otra fecha/hora reemplaza la anterior.
+    if (f.date || f.time) { if (f.date) d.date = f.date; if (f.time) d.time = f.time; d.askPast = false; gained = true; }
+    else if (f.answer === 'yes' || isYes(t)) { d.done = true; d.askPast = false; gained = true; }
+  } else {
+    if (f.date && !d.date) { d.date = f.date; gained = true; }
+    if (f.time && !d.time) { d.time = f.time; gained = true; }
+  }
   if (f.title && !d.title) d.title = f.title;
 
   if (!gained && !prefix) {
@@ -213,9 +224,20 @@ async function advance(from: string, d: Draft, prefix = ''): Promise<Result> {
   if (d.date && d.time) {
     const dt = DateTime.fromFormat(`${d.date} ${d.time}`, 'yyyy-MM-dd HH:mm', { zone: config.TZ_APP });
     if (!dt.isValid) { d.date = d.time = null; prefix += 'No pude interpretar la fecha y la hora. '; }
-    else if (dt < DateTime.now()) { d.date = d.time = null; prefix += 'La fecha y hora indicadas ya pasaron. '; }
-    else scheduledAt = dt.toISO();
+    else if (dt < DateTime.now() && !d.done) {
+      // Hora pasada sin decir que ya se hizo: si el cliente ya esta resuelto, se pregunta; si no, primero se resuelve el cliente.
+      if (d.clientId || d.addConfirmed) {
+        d.askPast = true;
+        return ask(from, d, [
+          `${prefix}La hora indicada (${prettyWhen(dt.toISO()!)}) ya pasó.`,
+          '¿Fue un soporte que ya realizó y quiere registrarlo como completado? Responda SI.',
+          'O dígame otra fecha y hora si quería agendarlo. Responda NO para cancelar.',
+        ].join('\n'));
+      }
+    } else scheduledAt = dt.toISO();
   }
+  // Un soporte "ya realizado" con fecha futura no tiene sentido: se agenda como pendiente.
+  const completed = !!(d.done && scheduledAt && DateTime.fromISO(scheduledAt) <= DateTime.now());
 
   // 3. ¿Falta algo?
   const choosingClient = !d.clientId && !d.addConfirmed;
@@ -225,7 +247,7 @@ async function advance(from: string, d: Draft, prefix = ''): Promise<Result> {
     if (choosingClient) lines.push(...clientQuestion(d, prefix));
     else lines.push(`${prefix}${d.clientId ? `Para agendar el soporte de ${d.clientName}` : `Perfecto, crearé a ${d.clientName} en el sistema. Para agendar`} me falta información.`);
     if (need.length) lines.push(`Además necesito: ${joinEs(need)}.`);
-    else if (choosingClient && scheduledAt) lines.push(`Agendaré el soporte para ${prettyWhen(scheduledAt)}.`);
+    else if (choosingClient && scheduledAt) lines.push(`${completed ? 'Registraré el soporte como completado' : 'Agendaré el soporte'} para ${prettyWhen(scheduledAt)}.`);
     const hint = [!d.date && !d.time ? 'mañana a las 10' : !d.date ? 'mañana' : !d.time ? 'a las 10' : null].filter(Boolean);
     if (hint.length) lines.push(`Puede decir la fecha y hora junto con su respuesta. Ej: "${choosingClient ? '2, ' : ''}${hint[0]}".`);
     lines.push('Responda NO para cancelar.');
@@ -255,9 +277,10 @@ async function advance(from: string, d: Draft, prefix = ''): Promise<Result> {
     description: d.description ?? d.body,
     scheduledAt: scheduledAt!,
     source: 'whatsapp',
+    status: completed ? 'completed' : 'pending',
   });
   await sendText(from, [
-    `${note}Listo, soporte agendado:`,
+    `${note}Listo, soporte ${completed ? 'registrado como completado' : 'agendado'}:`,
     `Cliente: ${client.name}`,
     `Asunto: ${support.title}`,
     `Fecha: ${prettyWhen(scheduledAt!)}`,
@@ -367,7 +390,7 @@ async function takePending(phone: string): Promise<Draft | null> {
   const r = rows[0];
   if (!r || !r.valid || r.step !== 'draft') return null;
   const p = r.payload;
-  return { ...p, spoken: p.spoken ?? null, options: p.options ?? null, similarCount: p.similarCount ?? 0, hidden: p.hidden ?? 0, addConfirmed: !!p.addConfirmed };
+  return { ...p, spoken: p.spoken ?? null, options: p.options ?? null, similarCount: p.similarCount ?? 0, hidden: p.hidden ?? 0, addConfirmed: !!p.addConfirmed, done: !!p.done, askPast: !!p.askPast };
 }
 
 // ---------- Utilidades de texto ----------

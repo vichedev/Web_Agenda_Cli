@@ -4,7 +4,7 @@ import { auth } from '../lib/api';
 import { dateTimeOf } from '../lib/format';
 import { ChatIcon } from './Icons';
 
-interface Toast { id: number; title: string; client: string; when: string }
+interface Toast { id: number; title: string; client: string; when: string; done: boolean }
 
 /**
  * Tiempo real: mantiene abierta una conexion de eventos con el servidor. Cuando algo cambia
@@ -28,10 +28,10 @@ export function Realtime() {
       es = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);
 
       es.addEventListener('supports', (e) => {
-        const d = JSON.parse((e as MessageEvent).data) as { action: string; source?: string; title?: string; client?: string; scheduledAt?: string };
+        const d = JSON.parse((e as MessageEvent).data) as { action: string; source?: string; status?: string; title?: string; client?: string; scheduledAt?: string };
         refresh('supports', 'upcoming', 'history', 'history-months', 'clients');
         if (d.action === 'created' && d.source === 'whatsapp') {
-          const toast = { id: Date.now(), title: d.title ?? 'Soporte', client: d.client ?? '', when: d.scheduledAt ? dateTimeOf(d.scheduledAt) : '' };
+          const toast = { id: Date.now(), title: d.title ?? 'Soporte', client: d.client ?? '', when: d.scheduledAt ? dateTimeOf(d.scheduledAt) : '', done: d.status === 'completed' };
           setToasts((t) => [...t, toast]);
           window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== toast.id)), 8000);
         }
@@ -56,7 +56,7 @@ export function Realtime() {
         <div key={t.id} className="animate-fade pointer-events-auto flex items-start gap-3 rounded-xl bg-white p-3.5 shadow-lg ring-1 ring-slate-200">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600"><ChatIcon className="size-4.5" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-slate-900">Nuevo soporte agendado por WhatsApp</p>
+            <p className="text-[13px] font-semibold text-slate-900">{t.done ? 'Soporte registrado por WhatsApp' : 'Nuevo soporte agendado por WhatsApp'}</p>
             <p className="truncate text-[13px] text-slate-600">{t.client}{t.client && t.title ? ' · ' : ''}{t.title}</p>
             {t.when && <p className="text-xs text-slate-400">{t.when}</p>}
           </div>

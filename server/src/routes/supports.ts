@@ -12,6 +12,7 @@ const body = z.object({
   scheduledAt: z.string().datetime({ offset: true }),
   durationMin: z.number().int().positive().max(1440).optional(),
 });
+const createBody = body.extend({ status: z.enum(['pending', 'completed']).optional() });
 const id = (v: string) => z.coerce.number().int().positive().parse(v);
 
 export const supportsRouter = Router();
@@ -31,7 +32,7 @@ supportsRouter.get('/', wrap(async (req, res) => {
 supportsRouter.get('/upcoming', wrap(async (_req, res) => res.json(await svc.listUpcoming())));
 
 supportsRouter.post('/', wrap(async (req, res) => {
-  res.status(201).json(await svc.createSupport({ ...body.parse(req.body), source: 'web' }));
+  res.status(201).json(await svc.createSupport({ ...createBody.parse(req.body), source: 'web' }));
 }));
 
 supportsRouter.put('/:id', wrap(async (req, res) => {

@@ -36,21 +36,24 @@ export async function getSupport(id: number) {
 export interface NewSupport {
   clientId: number; title: string; description?: string | null;
   scheduledAt: string; durationMin?: number; source?: 'web' | 'whatsapp';
+  /** 'completed' registra un soporte que ya se realizo (con fecha pasada). Por defecto 'pending'. */
+  status?: 'pending' | 'completed';
 }
 
 export async function createSupport(s: NewSupport) {
+  const status = s.status ?? 'pending';
   const conn = await pool.connect();
   try {
     await conn.query('BEGIN');
     const { rows } = await conn.query(
-      `INSERT INTO supports (client_id, title, description, scheduled_at, duration_min, source)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [s.clientId, s.title, s.description ?? null, s.scheduledAt, s.durationMin ?? 60, s.source ?? 'web'],
+      `INSERT INTO supports (client_id, title, description, scheduled_at, duration_min, source, status, completed_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7::support_status, CASE WHEN $7 = 'completed' THEN $4::timestamptz ELSE NULL END) RETURNING id`,
+      [s.clientId, s.title, s.description ?? null, s.scheduledAt, s.durationMin ?? 60, s.source ?? 'web', status],
     );
-    await conn.query(`INSERT INTO support_status_log (support_id, to_status) VALUES ($1,'pending')`, [rows[0].id]);
+    await conn.query(`INSERT INTO support_status_log (support_id, to_status) VALUES ($1,$2::support_status)`, [rows[0].id, status]);
     await conn.query('COMMIT');
     const created = await getSupport(rows[0].id);
-    broadcast('supports', { action: 'created', id: created.id, source: s.source ?? 'web', title: created.title, client: created.client_name, scheduledAt: created.scheduled_at });
+    broadcast('supports', { action: 'created', id: created.id, source: s.source ?? 'web', status, title: created.title, client: created.client_name, scheduledAt: created.scheduled_at });
     return created;
   } catch (e) {
     await conn.query('ROLLBACK');

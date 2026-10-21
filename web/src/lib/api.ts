@@ -54,7 +54,7 @@ export const api = {
   clientMonths: (id: number) => request<MonthSummary[]>('GET', `/clients/${id}/history/months`),
   upcoming: () => request<Support[]>('GET', '/supports/upcoming'),
   supports: (month: string) => request<Support[]>('GET', `/supports?month=${month}`),
-  createSupport: (s: { clientId: number; title: string; description?: string; scheduledAt: string; durationMin?: number }) =>
+  createSupport: (s: { clientId: number; title: string; description?: string; scheduledAt: string; durationMin?: number; status?: 'pending' | 'completed' }) =>
     request<Support>('POST', '/supports', s),
   updateSupport: (id: number, s: { title?: string; description?: string; scheduledAt?: string; durationMin?: number }) =>
     request<Support>('PUT', `/supports/${id}`, s),
